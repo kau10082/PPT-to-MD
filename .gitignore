@@ -1,0 +1,7 @@
+# 本機工具設定，不入版控
+.claude/
+
+# 轉檔過程的暫存產物
+*.pdf
+slide*.jpg
+slide*.png
