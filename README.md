@@ -62,12 +62,27 @@ You are three steps away:
 
 ## 📖 基本使用方式 (Usage)
 
-最簡單的用法：一個輸入檔，跑完會在同資料夾產生同名的 `.md` 檔。
+本工具有兩種啟動方式：直接下指令跑，或是安裝成 Claude 的 skill 用講的就好。
 
-The simplest usage: give it one input file, and a `.md` file with the same name appears in the same folder.
+There are two ways to run this tool: type a command yourself, or install it as a Claude skill and just ask in plain words.
+
+### 方式一：命令列直接執行 / Option 1: Run from the command line
+
+完整指令格式如下——只有輸入檔是必填，其他都可省略：
+
+The full command looks like this — only the input file is required, everything else is optional:
 
 ```bash
-python scripts/extract.py my-deck.pptx
+python scripts/extract.py <輸入.pptx> [輸出.md] [--no-mermaid] [--frontmatter]
+```
+
+常見用法範例 / Common examples:
+
+```bash
+python scripts/extract.py my-deck.pptx                  # 最簡用法：同資料夾產生 my-deck.md / simplest: creates my-deck.md next to the input
+python scripts/extract.py my-deck.pptx notes/out.md     # 自訂輸出位置與檔名 / custom output path and name
+python scripts/extract.py my-deck.pptx --no-mermaid     # 不附 Mermaid 長條圖，只留數據表格 / skip Mermaid bar charts, keep only data tables
+python scripts/extract.py my-deck.pptx --frontmatter    # 檔頭加 YAML 欄位，進 Obsidian 用 / add YAML fields at the top, for Obsidian
 ```
 
 執行完會看到摘要報告，告訴你抽出了多少東西：
@@ -80,14 +95,19 @@ When it finishes you get a summary report of what was extracted:
   雜訊清理：折疊座標軸刻度 2 處 ｜ 剝除頁碼 15 處
 ```
 
-常用選項：
+### 方式二：安裝成 Claude Skill，用講的就好 / Option 2: Install as a Claude skill and just ask
 
-Common options:
+把整個專案資料夾打包成 ZIP（頂層資料夾名為 `ppt-to-md`），到 claude.ai 的 **Settings → Capabilities** 上傳安裝。之後在對話裡丟上 .pptx 檔，用以下任一方式觸發：
 
-| 選項 / Option | 作用 / What it does |
-|---|---|
-| `--no-mermaid` | 不附 Mermaid 長條圖，只留數據表格 / Skip the Mermaid bar charts, keep only data tables |
-| `--frontmatter` | 檔頭加 YAML 欄位（進 Obsidian 用）/ Add YAML fields at the top (for Obsidian) |
+Zip the whole project folder (top-level folder named `ppt-to-md`) and upload it at **Settings → Capabilities** on claude.ai. Then drop a .pptx into a chat and trigger it either way:
+
+- 輸入 **`/ppt`** 指令，或 / Type the **`/ppt`** command, or
+- 直接用自然語言說：「**把這份簡報忠實轉成 markdown**」「**盡量真實還原這份簡報的內容**」
+  Just say it in plain words: "**faithfully convert this deck to markdown**" or "**reproduce this deck's content as accurately as possible**"
+
+Claude 會自動照 [SKILL.md](SKILL.md) 的規則執行 `extract.py` 幫你轉檔。需要能執行程式碼的環境（claude.ai 對話、Claude Code 或桌面版；在 Claude Code 裡請用自然語言觸發，斜線指令會和內建指令衝突）。
+
+Claude will run `extract.py` for you following the rules in [SKILL.md](SKILL.md). A code-execution environment is required (a claude.ai chat, Claude Code, or the desktop app; inside Claude Code use natural language, since slash commands collide with its built-ins).
 
 ## 📁 目錄結構 (Repository Structure)
 
