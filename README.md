@@ -30,64 +30,47 @@ This is a small tool that converts PowerPoint files (.pptx) into plain Markdown 
 
 ## 🚀 快速開始 (Getting Started)
 
-只要三步就能開始用：
+本專案的設計定位就是 **Claude 的 skill（技能）**：安裝一次，之後在對話裡丟簡報、用講的就能轉檔。安裝只要三步：
 
-You are three steps away:
+This project is designed to be a **Claude skill**: install it once, then just drop a deck into a chat and ask. Installation takes three steps:
 
-1. **確認 Python**：需要 Python 3.10 以上（大多數電腦裝好 Python 就符合）。
-   **Check Python**: you need Python 3.10 or newer (any recent Python install is fine).
+1. **下載專案**：點本頁綠色的 **Code → Download ZIP**（或 `git clone`），解壓縮後把資料夾**改名為 `ppt-to-md`**。
+   **Download the project**: click the green **Code → Download ZIP** button on this page (or `git clone`), unzip it, and **rename the folder to `ppt-to-md`**.
 
-   ```bash
-   python --version
-   ```
+2. **壓縮成 ZIP**：把整個 `ppt-to-md` 資料夾壓縮成一個 ZIP 檔（ZIP 打開後第一層就是 `ppt-to-md/`，裡面直接看得到 `SKILL.md`）。
+   **Zip it up**: compress the whole `ppt-to-md` folder into a ZIP (opening the ZIP should show `ppt-to-md/` at the top level, with `SKILL.md` right inside).
 
-2. **下載專案**：
-   **Download the project**:
+3. **上傳到 Claude**：到 claude.ai 的 **Settings → Capabilities**，上傳這個 ZIP 並啟用。完成！
+   **Upload to Claude**: go to **Settings → Capabilities** on claude.ai, upload the ZIP, and enable it. Done!
 
-   ```bash
-   git clone https://github.com/kau10082/PPT-to-MD.git
-   cd PPT-to-MD
-   ```
-
-3. **直接執行**（不用安裝任何套件！）：
-   **Run it directly** (nothing to install!):
-
-   ```bash
-   python scripts/extract.py 你的簡報.pptx
-   ```
-
-> ⚠️ 只支援 `.pptx`。舊格式 `.ppt` 請先用 LibreOffice 轉檔：`soffice --headless --convert-to pptx 你的檔案.ppt`
+> 💻 **Claude Code 使用者**更簡單：不用壓 ZIP，直接把資料夾放到 `~/.claude/skills/ppt-to-md` 就裝好了。
 >
-> ⚠️ Only `.pptx` is supported. For the legacy `.ppt` format, convert first with LibreOffice: `soffice --headless --convert-to pptx your-file.ppt`
+> 💻 **Claude Code users** have it even easier: no ZIP needed — just place the folder at `~/.claude/skills/ppt-to-md` and you're set.
+
+> ⚠️ 使用時需要「能執行程式碼」的環境（claude.ai 對話、Claude Code 或桌面版），因為 skill 背後會替你執行轉檔程式。
+>
+> ⚠️ Usage requires a code-execution environment (a claude.ai chat, Claude Code, or the desktop app), because the skill runs the converter script for you behind the scenes.
 
 ## 📖 基本使用方式 (Usage)
 
-本工具有兩種啟動方式：直接下指令跑，或是安裝成 Claude 的 skill 用講的就好。
+安裝好之後，在對話裡**丟上一個 .pptx 檔**，然後用講的就行。兩種觸發方式：
 
-There are two ways to run this tool: type a command yourself, or install it as a Claude skill and just ask in plain words.
+Once installed, **drop a .pptx file** into a chat and just ask. Two ways to trigger it:
 
-### 方式一：命令列直接執行 / Option 1: Run from the command line
+- 輸入 **`/ppt`** 指令（可以只打這三個字，也可以後面接補充說明），或
+  Type the **`/ppt`** command (on its own, or followed by extra instructions), or
+- 直接用自然語言說，例如：
+  Just say it in plain words, for example:
+  > 「把這份簡報忠實轉成 markdown」
+  > 「盡量真實還原這份簡報的內容」
+  > 「這份 pptx 太大網頁工具吃不下，幫我在本機轉」
+  >
+  > "Faithfully convert this deck to markdown."
+  > "Reproduce this deck's content as accurately as possible."
 
-完整指令格式如下——只有輸入檔是必填，其他都可省略：
+Claude 會照 [SKILL.md](SKILL.md) 的規則替你執行轉檔程式，產出一份 `.md` 檔，並回報抽出了多少東西：
 
-The full command looks like this — only the input file is required, everything else is optional:
-
-```bash
-python scripts/extract.py <輸入.pptx> [輸出.md] [--no-mermaid] [--frontmatter]
-```
-
-常見用法範例 / Common examples:
-
-```bash
-python scripts/extract.py my-deck.pptx                  # 最簡用法：同資料夾產生 my-deck.md / simplest: creates my-deck.md next to the input
-python scripts/extract.py my-deck.pptx notes/out.md     # 自訂輸出位置與檔名 / custom output path and name
-python scripts/extract.py my-deck.pptx --no-mermaid     # 不附 Mermaid 長條圖，只留數據表格 / skip Mermaid bar charts, keep only data tables
-python scripts/extract.py my-deck.pptx --frontmatter    # 檔頭加 YAML 欄位，進 Obsidian 用 / add YAML fields at the top, for Obsidian
-```
-
-執行完會看到摘要報告，告訴你抽出了多少東西：
-
-When it finishes you get a summary report of what was extracted:
+Claude will run the converter for you following the rules in [SKILL.md](SKILL.md), produce a `.md` file, and report what was extracted:
 
 ```
 [ppt-to-md] 完成：my-deck.md
@@ -95,19 +78,41 @@ When it finishes you get a summary report of what was extracted:
   雜訊清理：折疊座標軸刻度 2 處 ｜ 剝除頁碼 15 處
 ```
 
-### 方式二：安裝成 Claude Skill，用講的就好 / Option 2: Install as a Claude skill and just ask
+需求也可以直接用講的，skill 會自己換成對應的程式選項：
 
-把整個專案資料夾打包成 ZIP（頂層資料夾名為 `ppt-to-md`），到 claude.ai 的 **Settings → Capabilities** 上傳安裝。之後在對話裡丟上 .pptx 檔，用以下任一方式觸發：
+Preferences can be stated in plain words too — the skill maps them to the right script options:
 
-Zip the whole project folder (top-level folder named `ppt-to-md`) and upload it at **Settings → Capabilities** on claude.ai. Then drop a .pptx into a chat and trigger it either way:
+| 你說 / You say | 效果 / Effect |
+|---|---|
+| 「加上 frontmatter，我要進 Obsidian」/ "Add frontmatter, this goes into Obsidian" | 檔頭產出 YAML 欄位（`--frontmatter`）/ YAML fields at the top (`--frontmatter`) |
+| 「不要附 Mermaid 圖」/ "Skip the Mermaid charts" | 只留數據表格（`--no-mermaid`）/ Data tables only (`--no-mermaid`) |
+| 「講者備註也要一起抽」/ "Extract the speaker notes too" | 本來就會做，還會自動分類 😉 / Already done by default, with automatic triage 😉 |
 
-- 輸入 **`/ppt`** 指令，或 / Type the **`/ppt`** command, or
-- 直接用自然語言說：「**把這份簡報忠實轉成 markdown**」「**盡量真實還原這份簡報的內容**」
-  Just say it in plain words: "**faithfully convert this deck to markdown**" or "**reproduce this deck's content as accurately as possible**"
+> ⚠️ 兩個小提醒 / Two small notes:
+> - 在 **Claude Code** 裡請用自然語言觸發，`/ppt` 斜線指令會和它的內建指令衝突。
+>   Inside **Claude Code**, trigger with natural language — the `/ppt` slash command collides with its built-ins.
+> - 只支援 `.pptx`；舊格式 `.ppt` 請先轉檔：`soffice --headless --convert-to pptx 你的檔案.ppt`
+>   Only `.pptx` is supported; convert legacy `.ppt` first: `soffice --headless --convert-to pptx your-file.ppt`
 
-Claude 會自動照 [SKILL.md](SKILL.md) 的規則執行 `extract.py` 幫你轉檔。需要能執行程式碼的環境（claude.ai 對話、Claude Code 或桌面版；在 Claude Code 裡請用自然語言觸發，斜線指令會和內建指令衝突）。
+<details>
+<summary>🔧 進階：不透過 Claude，直接當命令列工具跑 / Advanced: run it directly as a CLI tool, no Claude needed</summary>
 
-Claude will run `extract.py` for you following the rules in [SKILL.md](SKILL.md). A code-execution environment is required (a claude.ai chat, Claude Code, or the desktop app; inside Claude Code use natural language, since slash commands collide with its built-ins).
+轉檔核心就是一支獨立的 Python 程式（3.10+，僅標準庫），可以完全脫離 Claude 使用：
+
+The converter core is a standalone Python script (3.10+, standard library only) that works entirely without Claude:
+
+```bash
+python scripts/extract.py <輸入.pptx> [輸出.md] [--no-mermaid] [--frontmatter]
+```
+
+```bash
+python scripts/extract.py my-deck.pptx                  # 最簡用法：同資料夾產生 my-deck.md / simplest: creates my-deck.md next to the input
+python scripts/extract.py my-deck.pptx notes/out.md     # 自訂輸出位置與檔名 / custom output path and name
+python scripts/extract.py my-deck.pptx --no-mermaid     # 不附 Mermaid 長條圖 / skip Mermaid bar charts
+python scripts/extract.py my-deck.pptx --frontmatter    # 檔頭加 YAML 欄位 / add YAML fields at the top
+```
+
+</details>
 
 ## 📁 目錄結構 (Repository Structure)
 
