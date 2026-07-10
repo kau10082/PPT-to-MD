@@ -8,30 +8,39 @@ This is a small tool that converts PowerPoint files (.pptx) into plain Markdown 
 
 ## 2. 為什麼要用這個專案？ (Why Choose This?)
 
-GitHub 上已經有不少 pptx 轉 Markdown 的工具（例如 [pptx2md](https://github.com/ssine/pptx2md)、微軟的 [MarkItDown](https://github.com/microsoft/markitdown)），為什麼還需要這一個？因為它們的目標是「轉得出來」，而本專案的目標是「**轉得忠實**」。比較如下：
+市面上能把簡報轉成 Markdown 的工具很多，有些什麼格式都能吃、功能非常齊全。本專案不跟它們比「廣」，只比「忠」——它是專為醫藥與學術簡報磨出來的一把手術刀：別人把投影片轉成「能讀的文字」，它把圖表轉回「能算的數字」、把備註分成「能用的層次」。
 
-There are already several pptx-to-Markdown tools on GitHub (e.g. [pptx2md](https://github.com/ssine/pptx2md) and Microsoft's [MarkItDown](https://github.com/microsoft/markitdown)), so why this one? Because their goal is "gets converted", while this project's goal is "**converted faithfully**". Here is the comparison:
+There are plenty of tools that turn slides into Markdown, and some of them handle every format under the sun. This project doesn't compete on breadth — only on faithfulness. It is a scalpel honed for medical and academic decks: other tools turn slides into text you can read; this one turns charts back into numbers you can work with, and sorts the notes into layers you can actually use.
 
-| 比較項目 / Feature | 本專案 / This project | pptx2md | MarkItDown | 網頁轉檔工具 / Web converters |
-|---|---|---|---|---|
-| 原生圖表的底層數據 / Native chart data | **無損抽出成數據表 / Lossless data tables** | 不支援 / No | 不支援 / No | 不支援 / No |
-| 講者備註 / Speaker notes | **預設抽取，且頁碼保證對應正確 / Extracted by default, slide mapping guaranteed** | 預設不抽 / Not by default | 有抽但不分類 / Extracted, no triage | 多半不抽 / Usually no |
-| 備註自動分類 / Notes triage | **區分「制式引註」與「本頁專屬口述」/ Boilerplate vs. slide-specific** | 無 / No | 無 / No | 無 / No |
-| 合併儲存格 / Merged table cells | **誠實留白，不填假值 / Honest blanks, no filler** | 依區塊順序攤平 / Flattened by block order | 攤平 / Flattened | 常錯置 / Often scrambled |
-| 安裝需求 / Installation | **零安裝，僅 Python 標準庫 / Zero install, stdlib only** | 需 pip 安裝 / pip required | 需 pip 安裝 / pip required | 免裝但有大小限制 / No install but size-limited |
-| 大檔（25–50MB）/ Huge files (25–50 MB) | **本機執行，無上限 / Runs locally, no limit** | 可 / OK | 可 / OK | 常直接拒收 / Often rejected |
-| 當 Claude skill 用 / Works as a Claude skill | **是，用講的就能轉 / Yes, just ask in plain words** | 否 / No | 否 / No | 否 / No |
+五個真正的賣點：
 
-一句話總結三大賣點：
+The five real selling points:
 
-The three selling points in one sentence each:
+1. **圖表裡的數字挖得出來**：一般工具轉完檔，圖表往往只剩一個標題或一張圖，裡面的數字整批消失。本工具直接讀取簡報檔內部保存的圖表原始數據，無損還原成看得懂的數據表。如果你要的正是「圖裡那個療效數值」，這就是決定性的差異。
+   **The numbers inside charts survive**: with most tools, a chart comes out as just a title or a picture — every number inside it is lost. This tool reads the chart's raw data stored inside the file itself and restores it losslessly as a readable data table. If what you need is "that efficacy number in the figure", this is the decisive difference.
 
-1. **忠實不失真**：一般轉檔工具常把表格壓平（數字跑錯格）、把圖表數據弄丟、把講者備註配錯頁。本工具針對這三大坑逐一防堵，還原不了的就誠實留白，絕不用「看起來很順」的假內容補滿。
-   **Faithful, no distortion**: generic converters often flatten tables (numbers land in the wrong cells), lose chart data, and attach speaker notes to the wrong slides. This tool blocks all three failure modes, and where recovery is impossible it leaves an honest blank instead of plausible-looking filler.
-2. **零安裝負擔**：只需要 Python，而且只用內建標準庫——不用 pip 安裝任何套件，下載即用。
-   **Zero installation burden**: all you need is Python, and it uses only the built-in standard library — no pip packages, download and run.
-3. **大檔也吃得下**：學術簡報常因內嵌圖片肥到 25–50MB，網頁轉檔工具直接拒收；本工具在你自己的電腦上跑，沒有大小限制。
-   **Handles huge files**: academic decks easily hit 25–50 MB because of embedded images, which web converters reject; this tool runs on your own machine with no size limit.
+2. **講者備註不只抽出來，還幫你分類**：很多工具根本不抽講者備註，或是抽了卻配錯頁。本工具保證每則備註對回正確的投影片，還會自動分辨哪些是每頁複製貼上的制式引註、哪些是講者針對這一頁才說的獨家內容。
+   **Speaker notes are not just extracted — they are sorted**: many tools skip speaker notes entirely, or attach them to the wrong slides. This tool guarantees each note maps back to the correct slide, and automatically tells boilerplate citations pasted on every page apart from remarks the speaker made only for that specific slide.
+
+3. **不靠 AI 猜，結果永遠一樣**：本工具是純機械式抽取——不用 OCR、不用機器學習模型，同一份檔案跑一百次，結果一模一樣。沒有模型「腦補」出假內容的風險，還原不了的就誠實留白，適合需要稽核與查證的臨床、學術資料。
+   **No AI guessing — the result is always the same**: this is pure mechanical extraction, with no OCR and no machine-learning models. Run the same file a hundred times and you get the identical output. There is no risk of a model "hallucinating" plausible-looking content; whatever cannot be recovered is left honestly blank — which matters for clinical and academic material that needs to be audited and verified.
+
+4. **零安裝負擔，大檔也吃得下**：整個工具就是一支 Python 程式，只用內建標準庫，不用 pip 安裝任何套件，下載即用。學術簡報常因內嵌圖片肥到 25–50MB，網頁轉檔工具直接拒收；本工具在你自己的電腦上跑，沒有大小限制。
+   **Zero installation, huge files welcome**: the whole tool is a single Python script using only the built-in standard library — no pip packages, download and run. Academic decks easily hit 25–50 MB because of embedded images, which web converters reject; this tool runs on your own machine with no size limit.
+
+5. **為筆記軟體鋪好路**：轉出的檔案可以直接進 Obsidian——圖表數據會附上原生渲染的 Mermaid 長條圖（不用另外存圖片），`--frontmatter` 選項會自動在檔頭加上 YAML 欄位，方便納入你的筆記系統。
+   **Paved road into your note app**: the output drops straight into Obsidian — chart data comes with natively rendered Mermaid bar charts (no separate image files), and the `--frontmatter` option adds YAML fields at the top so the file slots right into your note system.
+
+也誠實地說，它「不」適合什麼（本專案的精神就是誠實留白，做不到的直說）：
+
+To be equally honest, here is what it is NOT for (honest blanks are this project's whole spirit, so we say it straight):
+
+- 只吃 `.pptx`。要轉 PDF、Word、Excel 或其他格式，請用通用轉檔工具。
+  It only eats `.pptx`. For PDF, Word, Excel, or anything else, use a general-purpose converter.
+- 以「圖片」形式貼進簡報的圖（例如統計圖的截圖）無法讀出數字——像素裡的數據只能回頭看原圖。
+  Charts pasted in as pictures (e.g. a screenshot of a statistical plot) cannot be read — data trapped in pixels can only be checked against the original image.
+- 遇到極端花俏的版面，機械式還原可能不如具備 AI 版面理解的大型工具。
+  For extremely fancy layouts, mechanical reconstruction may fall short of large tools with AI-based layout understanding.
 
 ## 3. 最新更新 (What's New)
 
