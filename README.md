@@ -28,8 +28,8 @@ The five real selling points:
 4. **零安裝負擔，大檔也吃得下**：整個工具就是一支 Python 程式，只用內建標準庫，不用 pip 安裝任何套件，下載即用。學術簡報常因內嵌圖片肥到 25–50MB，網頁轉檔工具直接拒收；本工具在你自己的電腦上跑，沒有大小限制。
    **Zero installation, huge files welcome**: the whole tool is a single Python script using only the built-in standard library — no pip packages, download and run. Academic decks easily hit 25–50 MB because of embedded images, which web converters reject; this tool runs on your own machine with no size limit.
 
-5. **為筆記軟體鋪好路**：轉出的檔案可以直接進 Obsidian——圖表數據會附上原生渲染的 Mermaid 長條圖（不用另外存圖片），`--frontmatter` 選項會自動在檔頭加上 YAML 欄位，方便納入你的筆記系統。
-   **Paved road into your note app**: the output drops straight into Obsidian — chart data comes with natively rendered Mermaid bar charts (no separate image files), and the `--frontmatter` option adds YAML fields at the top so the file slots right into your note system.
+5. **為筆記軟體鋪好路**：轉出的檔案可以直接進 Obsidian——長條圖數據會附上原生渲染的 Mermaid 圖（不用另外存圖片；折線、圓餅等其他圖型忠實保留數據表並標明原始圖型，不硬畫成長條誤導趨勢），`--frontmatter` 選項會自動在檔頭加上 YAML 欄位，方便納入你的筆記系統。
+   **Paved road into your note app**: the output drops straight into Obsidian — bar-chart data comes with natively rendered Mermaid charts (no separate image files; line, pie and other chart types keep their faithful data table labeled with the original chart kind, instead of being misleadingly redrawn as bars), and the `--frontmatter` option adds YAML fields at the top so the file slots right into your note system.
 
 也誠實地說，它「不」適合什麼（本專案的精神就是誠實留白，做不到的直說）：
 
@@ -43,6 +43,18 @@ To be equally honest, here is what it is NOT for (honest blanks are this project
   For extremely fancy layouts, mechanical reconstruction may fall short of large tools with AI-based layout understanding.
 
 ## 3. 最新更新 (What's New)
+
+- **SmartArt 文字不再遺失**：SmartArt 圖形內的文字現在會逐字抽出（標明階層未還原）；抽不到時明確標示，不再靜默消失。
+- **散佈圖支援**：散佈圖（x/y 值）也能無損還原成數據表；所有圖表都會標明原始圖型（長條/折線/圓餅/散佈…）。
+- **Mermaid 只附給長條圖**：折線、圓餅等圖型不再被硬畫成長條圖誤導趨勢，一律以數據表為準。
+- **合併儲存格更忠實**：合併造成的全空欄/列現在會保留（那是原檔結構，不是雜訊）。
+- **新增測試套件與 CI**：25 條測試守住每一項保真行為，`python -m unittest discover -s tests` 即可執行（僅標準庫）。
+
+- **SmartArt text no longer lost**: text inside SmartArt graphics is now extracted verbatim (hierarchy flagged as not reconstructed); when it can't be read, that is stated explicitly instead of silently vanishing.
+- **Scatter chart support**: scatter charts (x/y values) are restored losslessly as data tables too; every chart is now labeled with its original kind (bar / line / pie / scatter / …).
+- **Mermaid only for bar charts**: line, pie and other chart types are no longer force-drawn as bars (which misrepresents trends) — the data table is always canonical.
+- **More faithful merged cells**: fully empty columns/rows caused by merged cells are now kept (they are original structure, not noise).
+- **Test suite and CI added**: 25 tests guard every fidelity behavior; run them with `python -m unittest discover -s tests` (standard library only).
 
 - **v2 正式發布**：原生圖表的底層數據現在可以「無損」抽出，變成清楚的數據表格，再也不會轉完檔就消失。
 - **附贈 Mermaid 圖**：抽出的圖表數據會順便畫成長條圖，在 Obsidian 裡直接顯示，不需要另外存圖片檔。
@@ -151,6 +163,7 @@ PPT-to-MD/
 │   └── extract.py                 # 核心轉檔程式，一個檔案搞定 / the core converter, one single file
 ├── prompts/
 │   └── stage2-argue.md            # 選用：給 LLM 的「忠實整理」提示詞 / optional: LLM prompt for faithful restructuring
+├── tests/                         # 測試套件（開發用，僅標準庫）/ test suite (for development, stdlib only)
 └── later-verification-step/       # 選用：之後做「文獻查證」的資料 / optional: materials for later citation verification
     ├── README.md                  # 這個資料夾的說明 / what this folder is about
     ├── stage2-verify.md           # 用 PubMed 查證圖表出處的流程 / workflow for verifying figures via PubMed

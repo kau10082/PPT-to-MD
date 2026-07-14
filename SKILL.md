@@ -49,8 +49,9 @@ python scripts/extract.py <輸入.pptx> [輸出.md] [--no-mermaid] [--frontmatte
 |------|----------|
 | 投影片本文 | 依 shape tree 順序走，保留閱讀順序、逐字不改寫 |
 | 表格 | 還原成 Markdown 表格，保留行列結構 |
-| 合併儲存格 | **一律留白，不填補、不推論** |
-| **原生圖表** | 從 `ppt/charts` 抽底層數據還原成數據表（**無損**）；另附 Mermaid `xychart-beta` 長條圖（Obsidian 1.4+ 原生渲染、無需圖檔；表格為準，圖為附加，可用 `--no-mermaid` 關閉）|
+| 合併儲存格 | **一律留白，不填補、不推論**；合併造成的全空欄/列保留，不當雜訊刪除 |
+| **原生圖表** | 從 `ppt/charts` 抽底層數據還原成數據表（**無損**），並標示原始圖型（長條/折線/圓餅/散佈…）；散佈圖以 x/y 值成對還原；**僅長條圖**另附 Mermaid `xychart-beta`（Obsidian 1.4+ 原生渲染、無需圖檔；折線/圓餅畫成長條會誤導趨勢故不附；表格為準，圖為附加，可用 `--no-mermaid` 關閉）|
+| SmartArt 圖形 | 逐字抽出圖形內文字（標明階層與版面關係未還原）；無法抽取時明確標示，**不靜默遺失** |
 | 視覺強調還原 | 字級明顯大於內文者標為**粗體**（保留原檔重點層次；依 `sz` 字級機械判定，非語意判斷）|
 | 講者備註 | 透過 rels 正確對應投影片（notesSlide 編號 ≠ 投影片編號）|
 | 備註分級 | 跨頁重複＝「制式引註」；唯一＝「本頁專屬口述論點」|
@@ -122,9 +123,10 @@ pdftoppm -jpeg -r 150 輸入.pdf slide
 ppt-to-md/
 ├── SKILL.md                       # 本檔
 ├── scripts/
-│   └── extract.py                 # 第一階段：機械抽取（含原生圖表；可獨立執行，僅標準庫）
+│   └── extract.py                 # 第一階段：機械抽取（含原生圖表/SmartArt；可獨立執行，僅標準庫）
 ├── prompts/
 │   └── stage2-argue.md            # 第二階段（選用）：忠實整理提示詞
+├── tests/                         # 單元/端到端測試（開發用；skill 運作不需要）
 └── later-verification-step/       # 【之後的步驟】論點考證，非核心，暫存待用
     ├── README.md
     ├── stage2-verify.md           # PubMed/Consensus 核實 SOP + 鎖定坐實帳 schema
