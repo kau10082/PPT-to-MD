@@ -5,3 +5,7 @@
 *.pdf
 slide*.jpg
 slide*.png
+
+# Python 位元組碼快取
+__pycache__/
+*.pyc

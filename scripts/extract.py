@@ -12,9 +12,11 @@ ppt-to-md 第一階段：機械式忠實抽取（不靠提示詞、不查外部�
     1. 投影片本文：依 shape tree 順序抽取，保留閱讀順序、逐字不改寫
     2. 表格：還原 Markdown 表格，合併儲存格留白不填補
     3. 原生圖表：從 ppt/charts 抽出底層數據（類別/數列/數值），還原成數據表（無損）
-    4. 講者備註：依 rels 正確對應投影片；跨頁重複標為制式引註、唯一標為本頁專屬口述
-    5. 圖片出處：抽出 deck 自標的出處字樣（如「Adapted from…」）逐字保留，僅標示不查證
-    6. 雜訊：清掉純頁碼與 PowerPoint「Present Slide」介面殘留
+       並標示原始圖型；散佈圖以 x/y 值成對還原；僅長條圖附 Mermaid 渲染
+    4. SmartArt：逐字抽出圖形內文字（階層與版面未還原）；抽不到時明確標示
+    5. 講者備註：依 rels 正確對應投影片；跨頁重複標為制式引註、唯一標為本頁專屬口述
+    6. 圖片出處：抽出 deck 自標的出處字樣（如「Adapted from…」）逐字保留，僅標示不查證
+    7. 雜訊：清掉純頁碼與 PowerPoint「Present Slide」介面殘留
 
 設計原則：機械可驗證的才做；一切原文逐字；不猜、不填補、不查外部文獻。
 """
@@ -25,9 +27,11 @@ A = '{http://schemas.openxmlformats.org/drawingml/2006/main}'
 P = '{http://schemas.openxmlformats.org/presentationml/2006/main}'
 C = '{http://schemas.openxmlformats.org/drawingml/2006/chart}'
 R = '{http://schemas.openxmlformats.org/officeDocument/2006/relationships}'
+D = '{http://schemas.openxmlformats.org/drawingml/2006/diagram}'
 def a(t): return f'{A}{t}'
 def p_(t): return f'{P}{t}'
 def c_(t): return f'{C}{t}'
+def d_(t): return f'{D}{t}'
 def _sn(path): return int(re.search(r'slide(\d+)\.xml', path).group(1))
 
 
@@ -92,14 +96,24 @@ def cell_text(tc):
     return ' '.join(parts).strip()
 
 
-def _md_table(grid):
+def _md_table(grid, protected=None):
+    """protected：與 grid 同形的布林格；True 的格子屬於原檔合併儲存格，
+       其所在欄/列即使全空也保留（合併留白＝原檔結構，不是可丟棄的雜訊）。"""
     if not grid:
         return ''
     ncol = max(len(r) for r in grid)
     grid = [list(r) + [''] * (ncol - len(r)) for r in grid]
-    keep = [c for c in range(ncol) if any(str(grid[r][c]).strip() for r in range(len(grid)))]
+    if protected is None:
+        protected = [[False] * ncol for _ in grid]
+    else:
+        protected = [list(r) + [False] * (ncol - len(r)) for r in protected]
+    keep = [c for c in range(ncol)
+            if any(str(grid[r][c]).strip() or protected[r][c] for r in range(len(grid)))]
     grid = [[r[c] for c in keep] for r in grid]
-    grid = [r for r in grid if any(str(x).strip() for x in r)]
+    protected = [[r[c] for c in keep] for r in protected]
+    rows = [(g, m) for g, m in zip(grid, protected)
+            if any(str(x).strip() for x in g) or any(m)]
+    grid = [g for g, _ in rows]
     if not grid:
         return ''
     ncol = len(grid[0])
@@ -112,8 +126,16 @@ def _md_table(grid):
 
 
 def table_to_md(tbl):
-    grid = [[cell_text(tc) for tc in tr.iter(a('tc'))] for tr in tbl.iter(a('tr'))]
-    return _md_table(grid)
+    grid, merged = [], []
+    for tr in tbl.iter(a('tr')):
+        row, mrow = [], []
+        for tc in tr.iter(a('tc')):
+            row.append(cell_text(tc))
+            mrow.append(bool(tc.get('gridSpan') or tc.get('rowSpan')
+                             or tc.get('hMerge') or tc.get('vMerge')))
+        grid.append(row)
+        merged.append(mrow)
+    return _md_table(grid, merged)
 
 
 # ---------- native charts ----------
@@ -176,9 +198,22 @@ def _chart_to_mermaid(title, series, cats_master, idxs):
     return '\n'.join(lines) + '\n' + caption
 
 
+CHART_KIND_ZH = {
+    'barChart': '長條圖', 'bar3DChart': '立體長條圖',
+    'lineChart': '折線圖', 'line3DChart': '立體折線圖',
+    'pieChart': '圓餅圖', 'pie3DChart': '立體圓餅圖', 'doughnutChart': '環圈圖',
+    'areaChart': '面積圖', 'area3DChart': '立體面積圖',
+    'scatterChart': '散佈圖', 'bubbleChart': '泡泡圖',
+    'radarChart': '雷達圖', 'stockChart': '股價圖', 'surfaceChart': '曲面圖',
+}
+_BAR_KINDS = ('barChart', 'bar3DChart')
+
+
 def extract_chart_data(chart_path, emit_mermaid=True):
-    """從 chartN.xml 抽底層數據，還原成 Markdown 數據表（無損）；
-       emit_mermaid=True 時附加 Mermaid xychart-beta 長條圖（表格仍為 canonical）。"""
+    """從 chartN.xml 抽底層數據，還原成 Markdown 數據表（無損），並標示原始圖型；
+       散佈圖／泡泡圖（xVal/yVal）以 x 值當索引、y 值當數值成對還原；
+       emit_mermaid=True 時「僅長條圖」附加 Mermaid xychart-beta（表格仍為 canonical；
+       折線/圓餅等畫成長條會誤導趨勢，故不附）。"""
     if not os.path.exists(chart_path):
         return ''
     root = ET.parse(chart_path).getroot()
@@ -187,8 +222,17 @@ def extract_chart_data(chart_path, emit_mermaid=True):
     if t is not None:
         title = ''.join(x.text for x in t.iter(a('t')) if x.text).strip()
 
+    kinds = []
+    plot = root.find(f'.//{c_("plotArea")}')
+    if plot is not None:
+        for el in plot:
+            tag = el.tag.split('}')[-1]
+            if tag.endswith('Chart') and tag not in kinds:
+                kinds.append(tag)
+
     series = []
     cats_master = {}
+    used_xy = False
     for ser in root.iter(c_('ser')):
         name = ''
         tx = ser.find(c_('tx'))
@@ -196,6 +240,10 @@ def extract_chart_data(chart_path, emit_mermaid=True):
             name = ''.join(x.text for x in tx.iter(c_('v')) if x.text).strip()
         cat_el = ser.find(c_('cat'))
         val_el = ser.find(c_('val'))
+        if val_el is None and ser.find(c_('yVal')) is not None:
+            cat_el = ser.find(c_('xVal'))
+            val_el = ser.find(c_('yVal'))
+            used_xy = True
         cats = _cache_points(cat_el) if cat_el is not None else {}
         vals = _cache_points(val_el) if val_el is not None else {}
         for k, v in cats.items():
@@ -207,12 +255,13 @@ def extract_chart_data(chart_path, emit_mermaid=True):
     idxs = sorted(cats_master.keys()) if cats_master else \
         sorted({i for _, v in series for i in v.keys()})
 
-    headers = ['類別']
+    headers = ['X值' if used_xy else '類別']
     for i, (nm, _) in enumerate(series, 1):
         headers.append(nm if nm else f'數列{i}')
     grid = [headers]
     for idx in idxs:
-        row = [cats_master.get(idx, str(idx))]
+        cat = cats_master.get(idx, str(idx))
+        row = [_num(cat) if used_xy else cat]
         for _, vals in series:
             row.append(_num(vals.get(idx, '')))
         grid.append(row)
@@ -220,11 +269,37 @@ def extract_chart_data(chart_path, emit_mermaid=True):
     md = _md_table(grid)
     if not md:
         return ''
-    label = '**[原生圖表數據' + (f'：{title}' if title else '') + ']**'
+    kind_zh = '、'.join(CHART_KIND_ZH.get(k, k) for k in kinds)
+    label = ('**[原生圖表數據' + (f'（{kind_zh}）' if kind_zh else '')
+             + (f'：{title}' if title else '') + ']**')
     out = label + '\n\n' + md
-    if emit_mermaid:
+    if emit_mermaid and any(k in _BAR_KINDS for k in kinds):
         out += '\n\n' + _chart_to_mermaid(title, series, cats_master, idxs)
     return out
+
+
+# ---------- SmartArt (diagram) ----------
+def extract_diagram_text(data_path):
+    """從 SmartArt 的 ppt/diagrams/data*.xml 逐字抽出文字節點（依檔內順序）。
+       只取文字，不還原階層與版面關係；抽不到回傳 None（由呼叫端明確標示，不靜默遺失）。"""
+    if not data_path or not os.path.exists(data_path):
+        return None
+    try:
+        root = ET.parse(data_path).getroot()
+    except ET.ParseError:
+        return None
+    lines = []
+    for pt in root.iter(d_('pt')):
+        if pt.get('type') in ('parTrans', 'sibTrans'):  # 轉場節點＝模板殘留，非內容
+            continue
+        t_el = pt.find(d_('t'))
+        if t_el is None:
+            continue
+        for para in t_el.iter(a('p')):
+            line = ''.join(t.text for t in para.iter(a('t')) if t.text).strip()
+            if line:
+                lines.append(line)
+    return lines or None
 
 
 # ---------- provenance labels (抽取，不查證) ----------
@@ -235,7 +310,7 @@ PROVENANCE_PATTERNS = [
     r'image[^\n]*(?:from|permission)[^\n]*',
     r'source\s*[:：][^\n]*',
     r'\(figure\s*\d+[^\)]*\)',
-    r'\bfig(?:ure)?\.?\s*\d+\b[^\n]*',
+    r'\bfig(?:ure)?\.?\s*\d+\b[^\n]{0,150}',
 ]
 _PROV_RE = re.compile('|'.join(PROVENANCE_PATTERNS), re.IGNORECASE)
 
@@ -384,6 +459,7 @@ def extract_slide(path, rels, emit_mermaid=True):
             elif tag == 'graphicFrame':
                 tbl = child.find(f'.//{a("tbl")}')
                 chart_ref = child.find(f'.//{c_("chart")}')
+                dgm_rel = child.find(f'.//{d_("relIds")}')
                 if tbl is not None:
                     md = table_to_md(tbl)
                     if md:
@@ -395,6 +471,16 @@ def extract_slide(path, rels, emit_mermaid=True):
                         md = extract_chart_data(cpath, emit_mermaid)
                         if md:
                             blocks.append(('chart', md))
+                elif dgm_rel is not None:
+                    dm = dgm_rel.get(f'{R}dm')
+                    lines = extract_diagram_text(rels.get(dm)) if dm else None
+                    if lines:
+                        body = '\n'.join(f'- {ln}' for ln in lines)
+                        blocks.append(('smartart',
+                            '**[SmartArt 圖形文字（逐字抽取；階層與版面關係未還原，請回看原圖確認）]**\n\n' + body))
+                    else:
+                        blocks.append(('smartart',
+                            '_（此處有 SmartArt 圖形，文字無法抽取，請回看原檔）_'))
                 else:
                     paras = paras_from(child)
                     if paras:
@@ -439,12 +525,13 @@ def convert(pptx_path, out_path=None, emit_mermaid=True, frontmatter=False):
                '> ⚠️ 線性順序來自版面座標，不等於講者口說順序；並列/對照的視覺區塊會被攤平，閱讀時需回看原圖。',
                '> 雜訊處理：孤立的頁碼數字已剝除；圖表座標軸刻度（僅限等距刻度尺）折疊為一行摘要，散落數據值保留；跨頁重複的制式引註全文只顯示一次，後續頁指回首次出現處。',
                '> **粗體**＝原檔以明顯大字級強調的文字（保留視覺重點層次；依字級機械判定，非語意判斷）。',
-               '> 原生圖表除數據表外，另附 Mermaid xychart-beta 長條圖（Obsidian 1.4+ 可直接渲染，無需圖檔）；表格為準，圖為附加渲染。',
+               '> 原生圖表以數據表還原並標示原始圖型（長條/折線/圓餅/散佈…）；僅長條圖另附 Mermaid xychart-beta（Obsidian 1.4+ 可直接渲染，無需圖檔）；表格為準，圖為附加渲染。',
+               '> SmartArt 圖形內的文字逐字抽出（階層與版面關係未還原）；無法抽取時明確標示，不靜默遺失。',
                '', '---', '']
 
         slides = sorted(glob.glob(os.path.join(root_dir, 'ppt/slides/slide*.xml')), key=_sn)
         n_tables = n_charts = n_speaker = n_boiler = n_prov = 0
-        n_axis = n_pagenum = 0
+        n_axis = n_pagenum = n_smartart = 0
         for s in slides:
             n = _sn(s)
             rels = load_rels(root_dir, n)
@@ -460,6 +547,8 @@ def convert(pptx_path, out_path=None, emit_mermaid=True, frontmatter=False):
                     n_tables += 1
                 elif kind == 'chart':
                     n_charts += 1
+                elif kind == 'smartart':
+                    n_smartart += 1
                 out.append(content + '\n')
 
             nt = note_text(root_dir, notes_map.get(n))
@@ -497,7 +586,8 @@ def convert(pptx_path, out_path=None, emit_mermaid=True, frontmatter=False):
             f.write(md)
 
         print(f'[ppt-to-md] 完成：{out_path}')
-        print(f'  投影片 {len(slides)} 頁 ｜ 表格 {n_tables} 張 ｜ 原生圖表 {n_charts} 張 ｜ '
+        smart = f' ｜ SmartArt {n_smartart} 處' if n_smartart else ''
+        print(f'  投影片 {len(slides)} 頁 ｜ 表格 {n_tables} 張 ｜ 原生圖表 {n_charts} 張{smart} ｜ '
               f'本頁專屬口述 {n_speaker} 則 ｜ 制式引註 {n_boiler} 則 ｜ 圖片出處字樣 {n_prov} 頁')
         print(f'  雜訊清理：折疊座標軸刻度 {n_axis} 處 ｜ 剝除頁碼 {n_pagenum} 處')
         return out_path
